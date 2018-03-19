@@ -4,7 +4,7 @@ This **Word2Vec** code is made by Minho Park
 
 본 코드들을 실행시키기 위해서는 **tensorflow-gpu**와 **nltk**설치가 필요합니다.
 
-*word2vec repository* 내에는 11개의 코드가 존재합니다. 하지만 몇몇개의 코드는 특정 테스트를 위해 생성 된 것이므로, 이 `Readme.md` 에서는 6개의 코드에 대해서만 설명합니다. 
+*word2vec repository* 내에는 11개의 코드가 존재합니다. 하지만 몇몇개의 코드는 특정 테스트를 위해 생성 된 것이므로, 이 `Readme.md` 에서는 6개의 코드에 대해서만 설명합니다.
 
 * `word2vec_saram.py`
 * `word2vec_saram.sh`
@@ -17,22 +17,22 @@ This **Word2Vec** code is made by Minho Park
 
 ## word2vec_saram.py
 
-이 코드는 word2vec의 **skip-gram** 을 사용하여 **word embedding**을 수행하는 파이썬3 코드입니다.  
-본 코드는 크게 3가지 단계로 구성되어 있습니다.  
+이 코드는 word2vec의 **skip-gram** 을 사용하여 **word embedding**을 수행하는 파이썬3 코드입니다.
+본 코드는 크게 3가지 단계로 구성되어 있습니다.
 
-* 데이터를 불러 온 후 Mini-batch화  
+* 데이터를 불러 온 후 Mini-batch화
 * **skip-gram** 을 이용한 **word embedding**
 * word vector **visualization** 및 결과 저장
 
 **skip gram**의 세부 알고리즘에 대해서는 [다음 논문](https://papers.nips.cc/paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf) 을 참고하시면 되겠습니다.
 
-`word2vec_saram.py` 코드는 사람인 데이터를 기준으로 생성 된 코드 입니다만, input data 형식만 맞춰주면 어느 데이터를 사용하던 작동 할 수 있습니다. 다른 데이터를 사용하려면 *line 82*의 **filename** 변수를 주성 해 주시면 됩니다.  
+`word2vec_saram.py` 코드는 사람인 데이터를 기준으로 생성 된 코드 입니다만, input data 형식만 맞춰주면 어느 데이터를 사용하던 작동 할 수 있습니다. 다른 데이터를 사용하려면 *line 82*의 **filename** 변수를 주성 해 주시면 됩니다.
 
-~~~python  
-82 filename = 데이터의 디렉터리 위치  
+~~~python
+82 filename = 데이터의 디렉터리 위치
 ~~~
 
-그리고 이 코드는 총 7개의 arguments를 입력 받습니다.  
+그리고 이 코드는 총 7개의 arguments를 입력 받습니다.
 
 * `--log_dir` : tensorboard log file과 visualization결과, 그리고 embedding table, dictionary등이 저장되는 위치 지정
 * `--embedding_size` : word vector의 차원수 설정
@@ -44,6 +44,8 @@ This **Word2Vec** code is made by Minho Park
 
 위 arguments는 word2vec_saram.sh에서 모두 지정되어 있습니다.
 
+결과 image
+[tsne.png](./images/tsne.png)
 ## word2vec_saram.sh
 
 실행방법:
@@ -79,4 +81,4 @@ argument:
 `sh find_topk_sim.sh`
 
 <!---->
- 
+
