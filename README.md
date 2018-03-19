@@ -45,6 +45,9 @@ This **Word2Vec** code is made by Minho Park
 위 arguments는 word2vec_saram.sh에서 모두 지정되어 있습니다.
 
 결과 image
+<p align="center">
+<img src="./images/tsne.png">
+</p>
 [tsne.png](./images/tsne.png)
 ## word2vec_saram.sh
 
