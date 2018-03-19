@@ -1,6 +1,5 @@
 # Word2Vec
 
-This **Word2Vec** code is made by Minho Park
 
 본 코드들을 실행시키기 위해서는 **tensorflow-gpu**와 **nltk**설치가 필요합니다.
 
