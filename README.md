@@ -48,7 +48,9 @@ This **Word2Vec** code is made by Minho Park
 <p align="center">
 <img src="./images/tsne.png">
 </p>
+
 [tsne.png](./images/tsne.png)
+
 ## word2vec_saram.sh
 
 실행방법:
