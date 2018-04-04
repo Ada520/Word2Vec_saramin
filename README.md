@@ -14,7 +14,7 @@
 
 모든 코드는 python file과 shell script가 1:1 매칭되어 있습니다. 실행은 shell script로 실행하면 됩니다.
 
-## word2vec_saram.py
+## `word2vec_saram.py`
 
 이 코드는 word2vec의 **skip-gram** 을 사용하여 **word embedding**을 수행하는 파이썬3 코드입니다.
 본 코드는 크게 3가지 단계로 구성되어 있습니다.
@@ -50,14 +50,14 @@
 
 [tsne.png](./images/tsne.png)
 
-## word2vec_saram.sh
+## `word2vec_saram.sh`
 
 실행방법:
 `sh word2vec_saram.sh`
 
 스크립트 내의 변수를 조정하여 **word2vec** 다양하게 실행 가능합니다.
 
-## loadpickle.py
+## `loadpickle.py`
 `word2vec_sarma.py`에서 산출된 **data.pkl**, **count.pkl**, **dictionary.pkl**, **reverse_dictionary.pkl**, **embedding.pkl** 파일을 보는데 필요한 코드입니다.
 
 이 코드 역시 실행은 `loadpickle.sh`로 하시면 됩니다.
@@ -66,12 +66,12 @@ arguments 목록:
 
 * `--pkl_dir` = pickle 파일이 존재하는 directory (보통 `word2vec_saram.sh`을 실행한 log_dir 위치를 입력)
 
-## loadpickle.sh
+## `loadpickle.sh`
 
 실행방법:
 `sh loadpickle.sh`
 
-## find_topk_sim.py
+## `find_topk_sim.py`
 
 `word2vec_saram.py`에서 산출 된 **embedding.pkl**, **reverse_dictionary.pkl** 파일을 이용하여 corpus에서 가장 많이 등장한 단어들의 가장 가까운 cosine similarity를 가진 단어를 출력해 줍니다.
 
@@ -79,10 +79,24 @@ argument:
 
 * `--pkl_dir` : pickle 파일이 존재하는 directory (보통 `word2vec_saram.sh`을 실행한 log_dir 위치를 입력)
 
-## find_topk_sim.sh
+## `find_topk_sim.sh`
 
 실행방법:
 `sh find_topk_sim.sh`
 
+## `visual_wordVec.py` ##
+
+`word2vec_saram.py` 에서 산출되는 visualization 부분을 떼어낸 코드
+
+**주의 : scikit learn 설치 필요합니다. 그리고 한글 폰트부분 에러 날 수 있습니다.**
+
+실행은 `visual_wordVec.sh`로 하면 됩니다.
+
+## `visual_wordVec.py` ##
+
+스크립트 내에 embedding table, reverse dictionary, 결과 figure 이름(png 형식)을 바꾸어 가면서 실행가능
+PLOT_ONLY의 경우 plot 내에 찍어주는 dot의 양 조절 가능
+
+**주의 : `word2vec_saram.py`에서는 visualization을 자동으로 해주지만.... 이 코드를 돌리기 위해서는 doc2vec이든 word2vec이든, 결과 embedding table과 reverse dictionary를 pickle 파일로 따로 저장이 되어있어야 합니다.**
 <!---->
 
