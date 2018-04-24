@@ -98,5 +98,9 @@ argument:
 PLOT_ONLY의 경우 plot 내에 찍어주는 dot의 양 조절 가능
 
 **주의 : `word2vec_saram.py`에서는 visualization을 자동으로 해주지만.... 이 코드를 돌리기 위해서는 doc2vec이든 word2vec이든, 결과 embedding table과 reverse dictionary를 pickle 파일로 따로 저장이 되어있어야 합니다.**
+
+## `find_keyvalue.py` ##
+
+reverse_dictionary.pkl, embedding.pkl을 받아서 사용자가 지정한 단어와 가장 가까운 n개의 단어, cosine similiarity를 찾아주고, 다시 그 가까운 단어들의 가까운 n개의 단어와 cosine similiarity를 찾아서 namedtuple pickle, csv 파일로 저장해준다.
 <!---->
 
