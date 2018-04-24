@@ -21,6 +21,8 @@ data_name=['count', 'data', 'dictionary', 'reverse_dictionary', 'embedding']
 assert FLAGS.data_name in data_name
 with open(os.path.join(FLAGS.pkl_dir,FLAGS.data_name+".pkl"),"rb") as f:
     rd = pickle.load(f)
-
-for i in range(1000):
-    print(i, " : ", rd[i])
+    if FLAGS.data_name == "dictionary":
+        print(rd)
+    else:
+        for i in range(1000):
+            print(i, " : ", rd[i])
