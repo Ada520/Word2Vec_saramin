@@ -129,15 +129,7 @@ def read_data(filename):
         data[:] = (value for value in data if value != "-")
 
     return data
-
-
-#vocabulary = read_data(filename)
-#print('Data size', len(vocabulary))
-
 # Step 2: Build the dictionary and replace rare words with UNK token.
-vocabulary_size = 35000
-
-
 def build_dataset(words, n_words):
     """Process raw inputs into a dataset."""
     count = [['UNK', -1]]
@@ -155,36 +147,14 @@ def build_dataset(words, n_words):
     count[0][1] = unk_count
     reversed_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
     return data, count, dictionary, reversed_dictionary
-
-
-# Filling 4 global variables:
-# data - list of codes (integers from 0 to vocabulary_size-1).
-#   This is the original text but words are replaced by their codes
-# count - map of words(strings) to count of occurrences
-# dictionary - map of words(strings) to their codes(integers)
-# reverse_dictionary - maps codes(integers) to words(strings)
-#data, count, dictionary, reverse_dictionary = build_dataset(
-#    vocabulary, vocabulary_size)
-#del vocabulary  # Hint to reduce memory.
-
-# To reduce data loading time, this code used pickled data
-datapkl_path = "/hd/ncs_indeed_data/ncs02and20_indeed_job_line"
+#vocabulary = read_data(filename)
+#print('Data size', len(vocabulary))
 def load_pickle(path, picklename):
     with open(os.path.join(path, picklename+".pkl"), "rb") as f:
         pickledata = pickle.load(f)
     return pickledata
-data = load_pickle(datapkl_path, "data")
-count = load_pickle(datapkl_path, "count")
-dictionary = load_pickle(datapkl_path, "dictionary")
-reverse_dictionary = load_pickle(datapkl_path, "reverse_dictionary")
-
-print('Most common words (+UNK)', count[:5])
-print('Sample data', data[:10], [reverse_dictionary[i] for i in data[:10]])
-
-data_index = 0
 
 
-# Step 3: Function to generate a training batch for the skip-gram model.
 def generate_batch(batch_size, num_skips, skip_window):
     global data_index
     assert batch_size % num_skips == 0
@@ -213,7 +183,6 @@ def generate_batch(batch_size, num_skips, skip_window):
     data_index = (data_index + len(data) - span) % len(data)
     return batch, labels
 
-
 def plot_with_labels(low_dim_embs, labels, filename):
     assert low_dim_embs.shape[0] >= len(labels), 'More labels than embeddings'
     plt.figure(figsize=(18, 18))  # in inches
@@ -230,204 +199,246 @@ def plot_with_labels(low_dim_embs, labels, filename):
 
     plt.savefig(filename)
 
-batch, labels = generate_batch(batch_size=8, num_skips=2, skip_window=1)
-for i in range(8):
-    print(batch[i], reverse_dictionary[batch[i]], '->', labels[i, 0],
-          reverse_dictionary[labels[i, 0]])
-
-# Step 4: Build and train a skip-gram model.
+vocabulary_size = 35000
 
 
 
-# We pick a random validation set to sample nearest neighbors. Here we limit the
-# validation samples to the words that have a low numeric ID, which by
-# construction are also the most frequent. These 3 variables are used only for
-# displaying model accuracy, they don't affect calculation.
-valid_size = 16  # Random set of words to evaluate similarity on.
-valid_window = 100  # Only pick dev samples in the head of the distribution.
-valid_examples = np.random.choice(valid_window, valid_size, replace=False)
-
-graph = tf.Graph()
-
-with graph.as_default():
-    # Input data.
-    with tf.name_scope('inputs'):
-        train_inputs = tf.placeholder(tf.int32, shape=[batch_size])
-        train_labels = tf.placeholder(tf.int32, shape=[batch_size, 1])
-        valid_dataset = tf.constant(valid_examples, dtype=tf.int32)
-
-    # Ops and variables pinned to the CPU because of missing GPU implementation
-    with tf.device('/cpu:0'):
-        # Look up embeddings for inputs.
-        with tf.name_scope('embeddings'):
-            embeddings = tf.Variable(
-                tf.random_uniform([vocabulary_size, embedding_size], -1.0, 1.0))
-            embed = tf.nn.embedding_lookup(embeddings, train_inputs)
-
-    with tf.device('/cpu:0'):
-        # Construct the variables for the NCE loss
-        with tf.name_scope('weights'):
-            nce_weights = tf.Variable(
-                tf.truncated_normal(
-                    [vocabulary_size, embedding_size],
-                    stddev=1.0 / math.sqrt(embedding_size)))
-        with tf.name_scope('biases'):
-            nce_biases = tf.Variable(tf.zeros([vocabulary_size]))
-
-    # Compute the average NCE loss for the batch.
-    # tf.nce_loss automatically draws a new sample of the negative labels each
-    # time we evaluate the loss.
-    # Explanation of the meaning of NCE loss:
-    #   http://mccormickml.com/2016/04/19/word2vec-tutorial-the-skip-gram-model/
-    with tf.name_scope('loss'):
-        loss = tf.reduce_mean(
-            tf.nn.nce_loss(
-                weights=nce_weights,
-                biases=nce_biases,
-                labels=train_labels,
-                inputs=embed,
-                num_sampled=num_sampled,
-                num_classes=vocabulary_size))
-
-    # Add the loss value as a scalar to summary.
-    tf.summary.scalar('loss', loss)
-    # Construct the SGD optimizer using a learning rate of 1.0.
-    with tf.name_scope('optimizer'):
-        optimizer = tf.train.GradientDescentOptimizer(1.0).minimize(loss)
-
-    # Compute the cosine similarity between minibatch examples and all embeddings.
-    norm = tf.sqrt(tf.reduce_sum(tf.square(embeddings), 1, keep_dims=True))
-    normalized_embeddings = embeddings / norm
-    valid_embeddings = tf.nn.embedding_lookup(normalized_embeddings,
-                                              valid_dataset)
-    similarity = tf.matmul(
-        valid_embeddings, normalized_embeddings, transpose_b=True)
-
-    # Merge all summaries.
-    merged = tf.summary.merge_all()
-
-    # Add variable initializer.
-    init = tf.global_variables_initializer()
-
-    # Create a saver.
-    saver = tf.train.Saver()
-
-# Step 5: Begin training.
-num_steps = FLAGS.num_steps
-disp_num = 2000
-
-tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000, method='exact', random_state=0)
-with tf.Session(graph=graph) as session:
-    # Open a writer to write summaries.
-    writer = tf.summary.FileWriter(FLAGS.log_dir, session.graph)
-
-    # We must initialize all variables before we use them.
-    init.run()
-    print('Initialized')
-
-    average_loss = 0
-    for step in range(num_steps):
-        batch_inputs, batch_labels = generate_batch(batch_size, num_skips,
-                                                    skip_window)
-        feed_dict = {train_inputs: batch_inputs, train_labels: batch_labels}
-
-        # Define metadata variable.
-        run_metadata = tf.RunMetadata()
-
-        # We perform one update step by evaluating the optimizer op (including it
-        # in the list of returned values for session.run()
-        # Also, evaluate the merged op to get all summaries from the returned "summary" variable.
-        # Feed metadata variable to session for visualizing the graph in TensorBoard.
-        _, summary, loss_val = session.run(
-            [optimizer, merged, loss],
-            feed_dict=feed_dict,
-            run_metadata=run_metadata)
-        average_loss += loss_val
-
-        # Add returned summaries to writer in each step.
-        writer.add_summary(summary, step)
-        # Add metadata to visualize the graph for the last run.
-        if step == (num_steps - 1):
-            writer.add_run_metadata(run_metadata, 'step%d' % step)
-
-        # Add returned summaries to writer in each step.
-        # writer.add_summary(summary, step)
-        # Add metadata to visualize the graph for the last run.
-    # if step == (num_steps - 1):
-    #      writer.add_run_metadata(run_metadata, 'step%d' % step)
-
-        if (step + 1) % disp_num == 0:
-            if step > 0:
-                average_loss /= disp_num
-            # The average loss is an estimate of the loss over the last 2000 batches.
-            print('Average loss at step ', step + 1, ': ', average_loss)
-            average_loss = 0
-
-        # Note that this is expensive (~20% slowdown if computed every 500 steps)
-        if (step + 1) % (disp_num * 5) == 0:
-            sim = similarity.eval()
-            for i in range(valid_size):
-                valid_word = reverse_dictionary[valid_examples[i]]
-                top_k = 8  # number of nearest neighbors
-                nearest = (-sim[i, :]).argsort()[1:top_k + 1]
-                log_str = 'Nearest to %s:' % valid_word
-                for k in range(top_k):
-                    # print(nearest[k])
-                    close_word = reverse_dictionary[nearest[k]]
-                    log_str += ' %s,' % (close_word)
-                print(log_str)
-            print('')
-        if (step + 1) % (disp_num * 10) == 0:
-            print('Visualizing...')
-            final_embeddings = normalized_embeddings.eval()
-            plot_only = 500
-            tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000, method='exact', random_state=0)
-
-            low_dim_embs = tsne.fit_transform(final_embeddings[:plot_only, :])
-            labels = [reverse_dictionary[i] for i in range(plot_only)]
-
-            #plot_with_labels(low_dim_embs, labels, os.path.join(FLAGS.log_dir, 'tsne_%d.png' % (step+1)))
-            plot_with_labels(low_dim_embs, labels, os.path.join(FLAGS.log_dir, 'tsne_%d.png' % (step+1)))
-            print('')
-            with open(os.path.join(FLAGS.log_dir, "embedding%d.pkl"%(step+1)), "wb") as f:
-                pickle.dump(final_embeddings, f)
-# Write corresponding labels for the embeddings.
-    with open(FLAGS.log_dir + '/metadata.tsv', 'w', encoding="UTF8") as f:
-        for i in range(vocabulary_size):
-            f.write(reverse_dictionary[i] + '\n')
-
-    # Save the model for checkpoints.
-    saver.save(session, os.path.join(FLAGS.log_dir, 'model.ckpt'))
-
-# Create a configuration for visualizing embeddings with the labels in TensorBoard.
-config = projector.ProjectorConfig()
-embedding_conf = config.embeddings.add()
-embedding_conf.tensor_name = embeddings.name
-embedding_conf.metadata_path = os.path.join(FLAGS.log_dir, 'metadata.tsv')
-projector.visualize_embeddings(writer, config)
-
-writer.close()
 
 
-# Step 6: Visualize the embeddings.
+# Filling 4 global variables:
+# data - list of codes (integers from 0 to vocabulary_size-1).
+#   This is the original text but words are replaced by their codes
+# count - map of words(strings) to count of occurrences
+# dictionary - map of words(strings) to their codes(integers)
+# reverse_dictionary - maps codes(integers) to words(strings)
+#data, count, dictionary, reverse_dictionary = build_dataset(
+#    vocabulary, vocabulary_size)
+#del vocabulary  # Hint to reduce memory.
+
+# To reduce data loading time, this code used pickled data
+
+def main() :
+    datapkl_path = "/hd/ncs_indeed_data/ncs02and20_indeed_job_line"
+
+    data = load_pickle(datapkl_path, "data")
+    count = load_pickle(datapkl_path, "count")
+    dictionary = load_pickle(datapkl_path, "dictionary")
+    reverse_dictionary = load_pickle(datapkl_path, "reverse_dictionary")
+
+    print('Most common words (+UNK)', count[:5])
+    print('Sample data', data[:10], [reverse_dictionary[i] for i in data[:10]])
+
+    data_index = 0
 
 
-# pylint: disable=missing-docstring
-# Function to draw visualization of distance between embeddings.
+    # Step 3: Function to generate a training batch for the skip-gram model.
 
 
 
-#with open(os.path.join(FLAGS.log_dir, file ,"_%d"%(num_steps), "embedding.pkl"), "wb") as f:
-#    pickle.dump(final_embeddings, f)
 
-with open(os.path.join(FLAGS.log_dir, "data.pkl"), "wb") as f:
-    pickle.dump(data, f)
 
-with open(os.path.join(FLAGS.log_dir, "count.pkl"), "wb") as f:
-    pickle.dump(count, f)
+    batch, labels = generate_batch(batch_size=8, num_skips=2, skip_window=1)
+    for i in range(8):
+        print(batch[i], reverse_dictionary[batch[i]], '->', labels[i, 0],
+              reverse_dictionary[labels[i, 0]])
 
-with open(os.path.join(FLAGS.log_dir, "dictionary.pkl"), "wb") as f:
-    pickle.dump(dictionary, f)
+    # Step 4: Build and train a skip-gram model.
 
-with open(os.path.join(FLAGS.log_dir, "reverse_dictionary.pkl"), "wb") as f:
-    pickle.dump(reverse_dictionary, f)
+
+
+    # We pick a random validation set to sample nearest neighbors. Here we limit the
+    # validation samples to the words that have a low numeric ID, which by
+    # construction are also the most frequent. These 3 variables are used only for
+    # displaying model accuracy, they don't affect calculation.
+    valid_size = 16  # Random set of words to evaluate similarity on.
+    valid_window = 100  # Only pick dev samples in the head of the distribution.
+    valid_examples = np.random.choice(valid_window, valid_size, replace=False)
+
+    graph = tf.Graph()
+
+    with graph.as_default():
+        # Input data.
+        with tf.name_scope('inputs'):
+            train_inputs = tf.placeholder(tf.int32, shape=[batch_size])
+            train_labels = tf.placeholder(tf.int32, shape=[batch_size, 1])
+            valid_dataset = tf.constant(valid_examples, dtype=tf.int32)
+
+        # Ops and variables pinned to the CPU because of missing GPU implementation
+        with tf.device('/cpu:0'):
+            # Look up embeddings for inputs.
+            with tf.name_scope('embeddings'):
+                embeddings = tf.Variable(
+                    tf.random_uniform([vocabulary_size, embedding_size], -1.0, 1.0))
+                embed = tf.nn.embedding_lookup(embeddings, train_inputs)
+
+        with tf.device('/cpu:0'):
+            # Construct the variables for the NCE loss
+            with tf.name_scope('weights'):
+                nce_weights = tf.Variable(
+                    tf.truncated_normal(
+                        [vocabulary_size, embedding_size],
+                        stddev=1.0 / math.sqrt(embedding_size)))
+            with tf.name_scope('biases'):
+                nce_biases = tf.Variable(tf.zeros([vocabulary_size]))
+
+        # Compute the average NCE loss for the batch.
+        # tf.nce_loss automatically draws a new sample of the negative labels each
+        # time we evaluate the loss.
+        # Explanation of the meaning of NCE loss:
+        #   http://mccormickml.com/2016/04/19/word2vec-tutorial-the-skip-gram-model/
+        with tf.name_scope('loss'):
+            loss = tf.reduce_mean(
+                tf.nn.nce_loss(
+                    weights=nce_weights,
+                    biases=nce_biases,
+                    labels=train_labels,
+                    inputs=embed,
+                    num_sampled=num_sampled,
+                    num_classes=vocabulary_size))
+
+        # Add the loss value as a scalar to summary.
+        tf.summary.scalar('loss', loss)
+        # Construct the SGD optimizer using a learning rate of 1.0.
+        with tf.name_scope('optimizer'):
+            optimizer = tf.train.GradientDescentOptimizer(1.0).minimize(loss)
+
+        # Compute the cosine similarity between minibatch examples and all embeddings.
+        norm = tf.sqrt(tf.reduce_sum(tf.square(embeddings), 1, keep_dims=True))
+        normalized_embeddings = embeddings / norm
+        valid_embeddings = tf.nn.embedding_lookup(normalized_embeddings,
+                                                  valid_dataset)
+        similarity = tf.matmul(
+            valid_embeddings, normalized_embeddings, transpose_b=True)
+
+        # Merge all summaries.
+        merged = tf.summary.merge_all()
+
+        # Add variable initializer.
+        init = tf.global_variables_initializer()
+
+        # Create a saver.
+        saver = tf.train.Saver()
+
+    # Step 5: Begin training.
+    num_steps = FLAGS.num_steps
+    disp_num = 2000
+
+    tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000, method='exact', random_state=0)
+    with tf.Session(graph=graph) as session:
+        # Open a writer to write summaries.
+        writer = tf.summary.FileWriter(FLAGS.log_dir, session.graph)
+
+        # We must initialize all variables before we use them.
+        init.run()
+        print('Initialized')
+
+        average_loss = 0
+        for step in range(num_steps):
+            batch_inputs, batch_labels = generate_batch(batch_size, num_skips,
+                                                        skip_window)
+            feed_dict = {train_inputs: batch_inputs, train_labels: batch_labels}
+
+            # Define metadata variable.
+            run_metadata = tf.RunMetadata()
+
+            # We perform one update step by evaluating the optimizer op (including it
+            # in the list of returned values for session.run()
+            # Also, evaluate the merged op to get all summaries from the returned "summary" variable.
+            # Feed metadata variable to session for visualizing the graph in TensorBoard.
+            _, summary, loss_val = session.run(
+                [optimizer, merged, loss],
+                feed_dict=feed_dict,
+                run_metadata=run_metadata)
+            average_loss += loss_val
+
+            # Add returned summaries to writer in each step.
+            writer.add_summary(summary, step)
+            # Add metadata to visualize the graph for the last run.
+            if step == (num_steps - 1):
+                writer.add_run_metadata(run_metadata, 'step%d' % step)
+
+            # Add returned summaries to writer in each step.
+            # writer.add_summary(summary, step)
+            # Add metadata to visualize the graph for the last run.
+        # if step == (num_steps - 1):
+        #      writer.add_run_metadata(run_metadata, 'step%d' % step)
+
+            if (step + 1) % disp_num == 0:
+                if step > 0:
+                    average_loss /= disp_num
+                # The average loss is an estimate of the loss over the last 2000 batches.
+                print('Average loss at step ', step + 1, ': ', average_loss)
+                average_loss = 0
+
+            # Note that this is expensive (~20% slowdown if computed every 500 steps)
+            if (step + 1) % (disp_num * 5) == 0:
+                sim = similarity.eval()
+                for i in range(valid_size):
+                    valid_word = reverse_dictionary[valid_examples[i]]
+                    top_k = 8  # number of nearest neighbors
+                    nearest = (-sim[i, :]).argsort()[1:top_k + 1]
+                    log_str = 'Nearest to %s:' % valid_word
+                    for k in range(top_k):
+                        # print(nearest[k])
+                        close_word = reverse_dictionary[nearest[k]]
+                        log_str += ' %s,' % (close_word)
+                    print(log_str)
+                print('')
+            if (step + 1) % (disp_num * 10) == 0:
+                print('Visualizing...')
+                final_embeddings = normalized_embeddings.eval()
+                plot_only = 500
+                tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000, method='exact', random_state=0)
+
+                low_dim_embs = tsne.fit_transform(final_embeddings[:plot_only, :])
+                labels = [reverse_dictionary[i] for i in range(plot_only)]
+
+                #plot_with_labels(low_dim_embs, labels, os.path.join(FLAGS.log_dir, 'tsne_%d.png' % (step+1)))
+                plot_with_labels(low_dim_embs, labels, os.path.join(FLAGS.log_dir, 'tsne_%d.png' % (step+1)))
+                print('')
+                with open(os.path.join(FLAGS.log_dir, "embedding%d.pkl"%(step+1)), "wb") as f:
+                    pickle.dump(final_embeddings, f)
+    # Write corresponding labels for the embeddings.
+        with open(FLAGS.log_dir + '/metadata.tsv', 'w', encoding="UTF8") as f:
+            for i in range(vocabulary_size):
+                f.write(reverse_dictionary[i] + '\n')
+
+        # Save the model for checkpoints.
+        saver.save(session, os.path.join(FLAGS.log_dir, 'model.ckpt'))
+
+    # Create a configuration for visualizing embeddings with the labels in TensorBoard.
+    config = projector.ProjectorConfig()
+    embedding_conf = config.embeddings.add()
+    embedding_conf.tensor_name = embeddings.name
+    embedding_conf.metadata_path = os.path.join(FLAGS.log_dir, 'metadata.tsv')
+    projector.visualize_embeddings(writer, config)
+
+    writer.close()
+
+
+    # Step 6: Visualize the embeddings.
+
+
+    # pylint: disable=missing-docstring
+    # Function to draw visualization of distance between embeddings.
+
+
+
+    #with open(os.path.join(FLAGS.log_dir, file ,"_%d"%(num_steps), "embedding.pkl"), "wb") as f:
+    #    pickle.dump(final_embeddings, f)
+
+    with open(os.path.join(FLAGS.log_dir, "data.pkl"), "wb") as f:
+        pickle.dump(data, f)
+
+    with open(os.path.join(FLAGS.log_dir, "count.pkl"), "wb") as f:
+        pickle.dump(count, f)
+
+    with open(os.path.join(FLAGS.log_dir, "dictionary.pkl"), "wb") as f:
+        pickle.dump(dictionary, f)
+
+    with open(os.path.join(FLAGS.log_dir, "reverse_dictionary.pkl"), "wb") as f:
+        pickle.dump(reverse_dictionary, f)
+
+if __name__ == "__main__":
+    main()
+
