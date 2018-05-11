@@ -62,6 +62,11 @@ parser.add_argument(
     default='/hd/word_embedding_data',
     help='The log directory for TensorBoard summaries.')
 parser.add_argument(
+    '--datapkl_dir',
+    type=str,
+    default=None,
+    help='data, dic, reverse_dic, count pkl directory path')
+parser.add_argument(
     '--embedding_size',
     type=int,
     default=100,
@@ -91,6 +96,7 @@ parser.add_argument(
     type=int,
     default=500001,
     help='Number of max steps of training')
+
 FLAGS, unparsed = parser.parse_known_args()
 num_steps = FLAGS.num_steps
 skip_window = FLAGS.skip_window  # How many words to consider left and right.
@@ -99,6 +105,7 @@ embedding_size = FLAGS.embedding_size  # Dimension of the embedding vector.
 num_skips = FLAGS.num_skips  # How many times to reuse an input to generate a label.
 num_sampled = FLAGS.num_sampled  # Number of negative examples to sample.
 
+data_index = 0
 
 # filename = "C:\\Users\\Tmax\\Desktop\\WordVec\\vtw\\parsed_data\\parsed_data_indeed_wordcount=3.txt"
 
@@ -155,7 +162,7 @@ def load_pickle(path, picklename):
     return pickledata
 
 
-def generate_batch(batch_size, num_skips, skip_window):
+def generate_batch(data, batch_size, num_skips, skip_window):
     global data_index
     assert batch_size % num_skips == 0
     assert num_skips <= 2 * skip_window
@@ -218,8 +225,9 @@ vocabulary_size = 35000
 # To reduce data loading time, this code used pickled data
 
 def main() :
-    datapkl_path = "/hd/ncs_indeed_data/ncs02and20_indeed_job_line"
-
+#    datapkl_path = "/hd/ncs_indeed_data/SAS_ncs2_job"
+    datapkl_path = FLAGS.datapkl_dir
+    print(datapkl_path)
     data = load_pickle(datapkl_path, "data")
     count = load_pickle(datapkl_path, "count")
     dictionary = load_pickle(datapkl_path, "dictionary")
@@ -228,7 +236,6 @@ def main() :
     print('Most common words (+UNK)', count[:5])
     print('Sample data', data[:10], [reverse_dictionary[i] for i in data[:10]])
 
-    data_index = 0
 
 
     # Step 3: Function to generate a training batch for the skip-gram model.
@@ -237,7 +244,7 @@ def main() :
 
 
 
-    batch, labels = generate_batch(batch_size=8, num_skips=2, skip_window=1)
+    batch, labels = generate_batch(data, batch_size=8, num_skips=2, skip_window=1)
     for i in range(8):
         print(batch[i], reverse_dictionary[batch[i]], '->', labels[i, 0],
               reverse_dictionary[labels[i, 0]])
@@ -334,7 +341,7 @@ def main() :
 
         average_loss = 0
         for step in range(num_steps):
-            batch_inputs, batch_labels = generate_batch(batch_size, num_skips,
+            batch_inputs, batch_labels = generate_batch(data, batch_size, num_skips,
                                                         skip_window)
             feed_dict = {train_inputs: batch_inputs, train_labels: batch_labels}
 

@@ -21,7 +21,7 @@ parser.add_argument(
 parser.add_argument(
     '--step',
     type=str,
-    default=100000,
+    default=None,
     help='embedding table step')
 FLAGS, unparsed = parser.parse_known_args()
 
@@ -52,9 +52,9 @@ def write_pkl_data(save_dir, step, nearest_topk_list, filename):
         w.writerows([(data.source, data.target, data.value) for data in nearest_topk_list])
 
 
-print(sys.getsizeof(embedding))
-embedding = embedding[:10000,:]
-print(sys.getsizeof(embedding))
+#print(sys.getsizeof(embedding))
+#embedding = embedding[:10000,:]
+#print(sys.getsizeof(embedding))
 word_list = ["경영기획","빅데이터"]
 for word in word_list:
     try:
@@ -63,13 +63,20 @@ for word in word_list:
     except:
         continue
 print(valid_examples)
+embedding_resize=max([max(valid_examples),5000])
+embedding = embedding[:embedding_resize,:]
 nearest_topk_list_02=find_topk.find_topk(reverse_dictionary,
-                                         embedding, [valid_examples[0]], 20)
+                                         embedding, [valid_examples[0]], 10)
 nearest_topk_list_20=find_topk.find_topk(reverse_dictionary,
-                                         embedding, [valid_examples[1]], 20)
-
+                                         embedding, [valid_examples[1]], 10)
+nearest_topk_list_02_40=find_topk.find_topk(reverse_dictionary,
+                                            embedding, [valid_examples[0]],40)
+nearest_topk_list_20_40=find_topk.find_topk(reverse_dictionary,
+                                            embedding, [valid_examples[1]],40)
 write_pkl_data(FLAGS.save_dir, FLAGS.step, nearest_topk_list_02, "nearest_topk_list_02")
 write_pkl_data(FLAGS.save_dir, FLAGS.step, nearest_topk_list_20, "nearest_topk_list_20")
+write_pkl_data(FLAGS.save_dir, FLAGS.step, nearest_topk_list_02_40, "nearest_topk_list_02_40")
+write_pkl_data(FLAGS.save_dir, FLAGS.step, nearest_topk_list_20_40, "nearest_topk_list_20_40")
 #print(nearest_topk_list)
 #with open(os.path.join(FLAGS.save_dir,"nearest_topk1_"+FLAGS.step+".pkl"),"wb") as f:
 #    pickle.dump(nearest_topk_list, f)

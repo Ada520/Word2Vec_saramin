@@ -39,42 +39,40 @@ from nltk.tokenize import word_tokenize
 
 from tensorflow.contrib.tensorboard.plugins import projector
 
-from sklearn.manifold import TSNE
-import matplotlib
-
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-
-plt.rcParams["font.family"] = "NanumGothic"
-
 from matplotlib import font_manager, rc
 
 #font_name = font_manager.FontProperties(fname="c:/Windows/Fonts/malgun.ttf").get_name()
 #rc('font', family=font_name)
-# Give a folder path as an argument with '--log_dir' to save
+# Give a folder path as an argument with '--datapkl_dir' to save
 # TensorBoard summaries. Default is a log folder in current directory.
 current_path = os.path.dirname(os.path.realpath(sys.argv[0]))
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    '--log_dir',
+    '--datapkl_dir',
     type=str,
-    default='/hd/ncs_indeed_data/ncs02and20_indeed_job_line',
+    default='/hd/ncs_indeed_data/SAS_ncs2_job',
     help='The log directory for TensorBoard summaries.')
+parser.add_argument(
+    '--datafile_path',
+    type=str,
+    default=None,
+    help='txt datafile path')
 FLAGS, unparsed = parser.parse_known_args()
 
 
 # filename = "C:\\Users\\Tmax\\Desktop\\WordVec\\vtw\\parsed_data\\parsed_data_indeed_wordcount=3.txt"
 
-filename = "/hd/ncs_indeed_data/parsed_data_04.txt"
-
+#filename = "/hd/ncs_indeed_data/parsed_data_SAS_ncs_job.txt"
+filename = FLAGS.datafile_path
 #datapath = "vanilaVersion"
 #filename = "/home/byounggeon_kim/WordVec/vtw/parsed_data/indeed_mecab(word_threshold=3).txt"
 
 
-if not os.path.exists(os.path.join(FLAGS.log_dir)):
-    os.makedirs(os.path.join(FLAGS.log_dir))
-
+if not os.path.exists(os.path.join(FLAGS.datapkl_dir)):
+    os.makedirs(os.path.join(FLAGS.datapkl_dir))
+else:
+    sys.exit(1)
 # Read the data into a list of strings.
 def read_data(filename):
     """Extract the first file enclosed in a zip file as a list of words."""
@@ -141,14 +139,14 @@ data, count, dictionary, reverse_dictionary = build_dataset(
 
 
 
-with open(os.path.join(FLAGS.log_dir, "data.pkl"), "wb") as f:
+with open(os.path.join(FLAGS.datapkl_dir, "data.pkl"), "wb") as f:
     pickle.dump(data, f)
 
-with open(os.path.join(FLAGS.log_dir, "count.pkl"), "wb") as f:
+with open(os.path.join(FLAGS.datapkl_dir, "count.pkl"), "wb") as f:
     pickle.dump(count, f)
 
-with open(os.path.join(FLAGS.log_dir, "dictionary.pkl"), "wb") as f:
+with open(os.path.join(FLAGS.datapkl_dir, "dictionary.pkl"), "wb") as f:
     pickle.dump(dictionary, f)
 
-with open(os.path.join(FLAGS.log_dir, "reverse_dictionary.pkl"), "wb") as f:
+with open(os.path.join(FLAGS.datapkl_dir, "reverse_dictionary.pkl"), "wb") as f:
     pickle.dump(reverse_dictionary, f)
