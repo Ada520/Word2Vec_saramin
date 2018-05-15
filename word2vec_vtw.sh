@@ -15,4 +15,4 @@ python word2vec_vtw.py --log_dir=${LOG_DIR}\
     --num_steps=${NUM_STEPS}
 cp word2vec_saram.py ${LOG_DIR}/word2vec_vtw.py
 cp word2vec_saram.sh ${LOG_DIR}/word2vec_vtw.sh
-
+echo $LOG_DIR
